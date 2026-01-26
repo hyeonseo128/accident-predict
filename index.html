@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>통합 제동 안전 시뮬레이터</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            gap: 0;
+            min-height: 800px;
+        }
+        
+        .control-panel {
+            background: #f8f9fa;
+            padding: 30px;
+            border-right: 2px solid #e0e0e0;
+            overflow-y: auto;
+        }
+        
+        .control-group {
+            margin-bottom: 25px;
+        }
+        
+        .control-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-size: 0.95em;
+        }
+        
+        .control-group input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .value-display {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-weight: 600;
+            margin-left: 10px;
+            font-size: 0.9em;
+        }
+        
+        .status-card {
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 3px solid;
+        }
+        
+        .status-card.safe {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+        
+        .status-card.danger {
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+        
+        .status-card h3 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+        
+        .distance-info {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .distance-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .distance-row:last-child {
+            border-bottom: none;
+            font-weight: 700;
+            font-size: 1.1em;
+            color: #2c3e50;
+        }
+        
+        .distance-label {
+            color: #666;
+        }
+        
+        .distance-value {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .visualization-panel {
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+        
+        .canvas-container {
+            position: relative;
+            background: #e8f4f8;
+            border-radius: 12px;
+            overflow: hidden;
+            height: 300px;
+            border: 2px solid #b0d4e3;
+        }
+        
+        #simulationCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid #e0e0e0;
+            height: 400px;
+        }
+        
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9em;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 4px;
+            border-radius: 2px;
+        }
+        
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .control-panel {
+                border-right: none;
+                border-bottom: 2px solid #e0e0e0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚗 통합 제동 안전 시뮬레이터</h1>
+            <p>실시간 물리 엔진 기반 제동거리 분석 시스템</p>
+        </header>
+        
+        <div class="main-grid">
+            <div class="control-panel">
+                <h2 style="margin-bottom: 25px; color: #2c3e50;">제어 패널</h2>
+                
+                <div class="control-group">
+                    <label>속도 (km/h) <span class="value-display" id="speedVal">60</span></label>
+                    <input type="range" id="speed" min="0" max="150" value="60" step="5">
+                </div>
+                
+                <div class="control-group">
+                    <label>도로 경사도 (%) <span class="value-display" id="slopeVal">0</span></label>
+                    <input type="range" id="slope" min="-15" max="15" value="0" step="1">
+                </div>
+                
+                <div class="control-group">
+                    <label>강수량 (mm/h) <span class="value-display" id="rainVal">0</span></label>
+                    <input type="range" id="rain" min="0" max="50" value="0" step="5">
+                </div>
+                
+                <div class="control-group">
+                    <label>반응 시간 (초) <span class="value-display" id="reactionVal">1.0</span></label>
+                    <input type="range" id="reaction" min="0.5" max="3.0" value="1.0" step="0.1">
+                </div>
+                
+                <div class="control-group">
+                    <label>장애물 거리 (m) <span class="value-display" id="obstacleVal">50</span></label>
+                    <input type="range" id="obstacle" min="10" max="200" value="50" step="5">
+                </div>
+                
+                <div class="status-card" id="statusCard">
+                    <h3 id="statusText">안전</h3>
+                    <p id="statusDesc">충분한 정지 거리 확보</p>
+                </div>
+                
+                <div class="distance-info">
+                    <h3 style="margin-bottom: 15px; color: #2c3e50;">거리 분석</h3>
+                    <div class="distance-row">
+                        <span class="distance-label">공주거리</span>
+                        <span class="distance-value" id="reactDist">16.7 m</span>
+                    </div>
+                    <div class="distance-row">
+                        <span class="distance-label">제동거리</span>
+                        <span class="distance-value" id="brakeDist">28.3 m</span>
+                    </div>
+                    <div class="distance-row">
+                        <span class="distance-label">총 정지거리</span>
+                        <span class="distance-value" id="totalDist">45.0 m</span>
+                    </div>
+                    <div class="distance-row" style="background: #fff3cd; margin-top: 10px; padding: 10px; border-radius: 6px;">
+                        <span class="distance-label">🛡️ 적정 안전거리</span>
+                        <span class="distance-value" style="color: #856404;" id="safeDist">54.0 m</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="visualization-panel">
+                <div class="canvas-container">
+                    <canvas id="simulationCanvas"></canvas>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="statsChart"></canvas>
+                </div>
+                
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ff6b6b;"></div>
+                        <span>내리막 (-10%)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #4ecdc4;"></div>
+                        <span>평지 (0%)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #95e1d3;"></div>
+                        <span>오르막 (+10%)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const g = 9.81;
+        
+        const controls = {
+            speed: document.getElementById('speed'),
+            slope: document.getElementById('slope'),
+            rain: document.getElementById('rain'),
+            reaction: document.getElementById('reaction'),
+            obstacle: document.getElementById('obstacle')
+        };
+        
+        const displays = {
+            speed: document.getElementById('speedVal'),
+            slope: document.getElementById('slopeVal'),
+            rain: document.getElementById('rainVal'),
+            reaction: document.getElementById('reactionVal'),
+            obstacle: document.getElementById('obstacleVal')
+        };
+        
+        const canvas = document.getElementById('simulationCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        function getFrictionCoefficient(rain) {
+            if (rain === 0) return 0.7;
+            if (rain <= 10) return 0.6;
+            if (rain <= 20) return 0.5;
+            if (rain <= 30) return 0.4;
+            if (rain <= 40) return 0.3;
+            return 0.2;
+        }
+        
+        function calculateDistances(speed, slope, rain, reactionTime) {
+            const vMs = speed / 3.6;
+            const reactionDist = vMs * reactionTime;
+            
+            const mu = getFrictionCoefficient(rain);
+            const thetaRad = Math.atan(slope / 100);
+            
+            const denominator = 2 * g * (mu * Math.cos(thetaRad) + Math.sin(thetaRad));
+            const brakeDist = denominator !== 0 ? (vMs * vMs) / denominator : 0;
+            
+            // 적정 안전거리 = 총 정지거리 × 1.2 (20% 안전 마진)
+            const totalDist = reactionDist + Math.max(0, brakeDist);
+            const safeDist = totalDist * 1.2;
+            
+            return {
+                reaction: reactionDist,
+                brake: Math.max(0, brakeDist),
+                total: totalDist,
+                safe: safeDist
+            };
+        }
+        
+        function drawSimulation(speed, slope, obstacle, distances) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const centerY = canvas.height / 2;
+            const roadHeight = 80;
+            const tiltAngle = Math.atan(slope / 100) * 0.5;
+            
+            ctx.save();
+            ctx.translate(canvas.width / 2, centerY);
+            ctx.rotate(tiltAngle);
+            ctx.translate(-canvas.width / 2, -centerY);
+            
+            const gradient = ctx.createLinearGradient(0, centerY - roadHeight/2, 0, centerY + roadHeight/2);
+            gradient.addColorStop(0, '#555');
+            gradient.addColorStop(0.5, '#666');
+            gradient.addColorStop(1, '#555');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, centerY - roadHeight/2, canvas.width, roadHeight);
+            
+            ctx.strokeStyle = '#ffeb3b';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([20, 15]);
+            ctx.beginPath();
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(canvas.width, centerY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            ctx.restore();
+            
+            const scale = canvas.width / 150;
+            const carX = 50;
+            const carWidth = 40;
+            const carHeight = 20;
+            
+            ctx.fillStyle = '#3498db';
+            ctx.fillRect(carX * scale, centerY - carHeight/2, carWidth, carHeight);
+            ctx.fillStyle = '#2c3e50';
+            ctx.fillRect(carX * scale + 5, centerY - carHeight/2 - 10, 15, 10);
+            ctx.fillRect(carX * scale + 25, centerY - carHeight/2 - 10, 10, 10);
+            
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.arc((carX + 10) * scale, centerY + carHeight/2 + 5, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc((carX + 30) * scale, centerY + carHeight/2 + 5, 5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            const obstacleX = carX + obstacle;
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(obstacleX * scale, centerY - 15, 10, 30);
+            ctx.fillStyle = '#c0392b';
+            ctx.fillRect(obstacleX * scale + 3, centerY - 10, 4, 20);
+            
+            // 적정 안전거리 영역 표시
+            const safeDistEnd = carX + distances.safe;
+            ctx.fillStyle = 'rgba(255, 193, 7, 0.15)';
+            ctx.fillRect(carX * scale, centerY - 30, (safeDistEnd - carX) * scale, 60);
+            ctx.strokeStyle = '#ffc107';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.strokeRect(carX * scale, centerY - 30, (safeDistEnd - carX) * scale, 60);
+            ctx.setLineDash([]);
+            
+            const reactionEnd = carX + distances.reaction;
+            ctx.strokeStyle = '#f39c12';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(carX * scale, centerY - 40);
+            ctx.lineTo(reactionEnd * scale, centerY - 40);
+            ctx.stroke();
+            ctx.fillStyle = '#f39c12';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.fillText('공주거리', (carX + 5) * scale, centerY - 45);
+            
+            const brakeEnd = reactionEnd + distances.brake;
+            ctx.strokeStyle = '#e74c3c';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(reactionEnd * scale, centerY - 40);
+            ctx.lineTo(brakeEnd * scale, centerY - 40);
+            ctx.stroke();
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillText('제동거리', (reactionEnd + 5) * scale, centerY - 45);
+            
+            // 적정 안전거리 라벨
+            ctx.fillStyle = '#856404';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText('🛡️ 안전거리', (brakeEnd + 5) * scale, centerY + 35);
+            
+            ctx.fillStyle = '#34495e';
+            ctx.font = 'bold 11px sans-serif';
+            for (let i = 0; i <= 150; i += 20) {
+                const x = i * scale;
+                ctx.fillRect(x, canvas.height - 25, 1, 10);
+                if (i % 40 === 0) {
+                    ctx.fillText(i + 'm', x - 10, canvas.height - 5);
+                }
+            }
+        }
+        
+        let chart = null;
+        
+        function updateChart(currentSpeed, currentRain) {
+            const speeds = [];
+            for (let s = 20; s <= 120; s += 10) {
+                speeds.push(s);
+            }
+            
+            const data = {
+                downhill: [],
+                flat: [],
+                uphill: []
+            };
+            
+            speeds.forEach(s => {
+                const down = calculateDistances(s, -10, currentRain, 1.0);
+                const flat = calculateDistances(s, 0, currentRain, 1.0);
+                const up = calculateDistances(s, 10, currentRain, 1.0);
+                
+                data.downhill.push(down.total);
+                data.flat.push(flat.total);
+                data.uphill.push(up.total);
+            });
+            
+            const chartData = {
+                labels: speeds,
+                datasets: [
+                    {
+                        label: '내리막 (-10%)',
+                        data: data.downhill,
+                        borderColor: '#ff6b6b',
+                        backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4
+                    },
+                    {
+                        label: '평지 (0%)',
+                        data: data.flat,
+                        borderColor: '#4ecdc4',
+                        backgroundColor: 'rgba(78, 205, 196, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4
+                    },
+                    {
+                        label: '오르막 (+10%)',
+                        data: data.uphill,
+                        borderColor: '#95e1d3',
+                        backgroundColor: 'rgba(149, 225, 211, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4
+                    }
+                ]
+            };
+            
+            if (chart) {
+                chart.destroy();
+            }
+            
+            chart = new Chart(document.getElementById('statsChart'), {
+                type: 'line',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '경사도별 정지거리 비교 분석',
+                            font: { size: 16, weight: 'bold' }
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: '속도 (km/h)',
+                                font: { size: 13, weight: 'bold' }
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: '총 정지거리 (m)',
+                                font: { size: 13, weight: 'bold' }
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+        
+        function updateSimulation() {
+            const speed = parseFloat(controls.speed.value);
+            const slope = parseFloat(controls.slope.value);
+            const rain = parseFloat(controls.rain.value);
+            const reaction = parseFloat(controls.reaction.value);
+            const obstacle = parseFloat(controls.obstacle.value);
+            
+            displays.speed.textContent = speed;
+            displays.slope.textContent = slope > 0 ? '+' + slope : slope;
+            displays.rain.textContent = rain;
+            displays.reaction.textContent = reaction.toFixed(1);
+            displays.obstacle.textContent = obstacle;
+            
+            const distances = calculateDistances(speed, slope, rain, reaction);
+            
+            document.getElementById('reactDist').textContent = distances.reaction.toFixed(1) + ' m';
+            document.getElementById('brakeDist').textContent = distances.brake.toFixed(1) + ' m';
+            document.getElementById('totalDist').textContent = distances.total.toFixed(1) + ' m';
+            document.getElementById('safeDist').textContent = distances.safe.toFixed(1) + ' m';
+            
+            const statusCard = document.getElementById('statusCard');
+            const statusText = document.getElementById('statusText');
+            const statusDesc = document.getElementById('statusDesc');
+            
+            if (distances.safe <= obstacle) {
+                statusCard.className = 'status-card safe';
+                statusText.textContent = '✓ 안전';
+                statusDesc.textContent = '적정 안전거리 확보';
+            } else if (distances.total <= obstacle) {
+                statusCard.className = 'status-card safe';
+                statusCard.style.background = '#fff3cd';
+                statusCard.style.borderColor = '#ffc107';
+                statusCard.style.color = '#856404';
+                statusText.textContent = '⚠ 주의';
+                statusDesc.textContent = '정지 가능하나 안전 마진 부족';
+            } else {
+                statusCard.className = 'status-card danger';
+                statusText.textContent = '⚠ 위험';
+                statusDesc.textContent = '정지거리 부족 - 충돌 위험';
+            }
+            
+            drawSimulation(speed, slope, obstacle, distances);
+            updateChart(speed, rain);
+        }
+        
+        Object.values(controls).forEach(control => {
+            control.addEventListener('input', updateSimulation);
+        });
+        
+        updateSimulation();
+    </script>
+</body>
+</html>
