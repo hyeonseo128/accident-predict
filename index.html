@@ -353,11 +353,13 @@
         window.addEventListener('resize', resizeCanvas);
         
         function getFrictionCoefficient(rain) {
+            // 선형 보간으로 부드러운 마찰계수 변화
             if (rain === 0) return 0.7;
-            if (rain <= 10) return 0.6;
-            if (rain <= 20) return 0.5;
-            if (rain <= 30) return 0.4;
-            if (rain <= 40) return 0.3;
+            if (rain <= 10) return 0.7 - (rain / 10) * 0.1; // 0.7 → 0.6
+            if (rain <= 20) return 0.6 - ((rain - 10) / 10) * 0.1; // 0.6 → 0.5
+            if (rain <= 30) return 0.5 - ((rain - 20) / 10) * 0.1; // 0.5 → 0.4
+            if (rain <= 40) return 0.4 - ((rain - 30) / 10) * 0.1; // 0.4 → 0.3
+            if (rain <= 50) return 0.3 - ((rain - 40) / 10) * 0.1; // 0.3 → 0.2
             return 0.2;
         }
         
@@ -492,22 +494,22 @@
             let xValues = [];
             let xLabel = '';
             
-            // X축 범위 설정
+            // X축 범위 설정 (0.5 간격으로 매우 세밀하게)
             switch(xVar) {
                 case 'speed':
-                    xValues = Array.from({length: 11}, (_, i) => 20 + i * 10); // 20~120
+                    xValues = Array.from({length: 201}, (_, i) => 20 + i * 0.5); // 20~120, 0.5km/h 간격
                     xLabel = '속도 (km/h)';
                     break;
                 case 'slope':
-                    xValues = Array.from({length: 13}, (_, i) => -15 + i * 2.5); // -15~15
+                    xValues = Array.from({length: 61}, (_, i) => -15 + i * 0.5); // -15~15, 0.5% 간격
                     xLabel = '경사도 (%)';
                     break;
                 case 'rain':
-                    xValues = Array.from({length: 11}, (_, i) => i * 5); // 0~50
+                    xValues = Array.from({length: 101}, (_, i) => i * 0.5); // 0~50, 0.5mm/h 간격
                     xLabel = '강수량 (mm/h)';
                     break;
                 case 'reaction':
-                    xValues = Array.from({length: 11}, (_, i) => 0.5 + i * 0.25); // 0.5~3.0
+                    xValues = Array.from({length: 51}, (_, i) => 0.5 + i * 0.05); // 0.5~3.0, 0.05초 간격
                     xLabel = '반응시간 (초)';
                     break;
             }
@@ -560,18 +562,18 @@
             }
             
             const chartData = {
-                labels: points.map(p => p.x.toFixed(1)),
+                labels: points.map(p => p.x),
                 datasets: [
                     {
                         label: yLabel,
                         data: yData,
                         borderColor: '#667eea',
                         backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                        borderWidth: 3,
-                        tension: 0.4,
+                        borderWidth: 2,
+                        tension: 0,
                         fill: true,
-                        pointRadius: 4,
-                        pointHoverRadius: 6,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
                         pointBackgroundColor: '#667eea',
                         pointBorderColor: '#fff',
                         pointBorderWidth: 2
