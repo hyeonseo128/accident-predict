@@ -233,7 +233,7 @@
                 <h2 style="margin-bottom: 25px; color: #2c3e50;">제어 패널</h2>
                 
                 <div class="control-group">
-                    <label>속도 (km/h) <span class="value-display" id="speedVal">60</span></label>
+                    <label>속력 (km/h) <span class="value-display" id="speedVal">60</span></label>
                     <input type="range" id="speed" min="0" max="150" value="60" step="5">
                 </div>
                 
@@ -294,7 +294,7 @@
                         <div>
                             <label style="font-size: 0.9em; font-weight: 600; margin-right: 8px;">X축:</label>
                             <select id="xAxis" style="padding: 6px 12px; border-radius: 6px; border: 2px solid #667eea; font-size: 0.9em;">
-                                <option value="speed">속도 (km/h)</option>
+                                <option value="speed">속력 (km/h)</option>
                                 <option value="slope">경사도 (%)</option>
                                 <option value="rain">강수량 (mm/h)</option>
                                 <option value="reaction">반응시간 (초)</option>
@@ -502,7 +502,7 @@
             switch(xVar) {
                 case 'speed':
                     xValues = Array.from({length: 201}, (_, i) => 20 + i * 0.5); // 20~120, 0.5km/h 간격
-                    xLabel = '속도 (km/h)';
+                    xLabel = '속력 (km/h)';
                     break;
                 case 'slope':
                     xValues = Array.from({length: 61}, (_, i) => -15 + i * 0.5); // -15~15, 0.5% 간격
@@ -591,7 +591,7 @@
             
             // 범례 텍스트 업데이트
             const fixedVars = [];
-            if (xAxis !== 'speed') fixedVars.push(`속도: ${currentSpeed} km/h`);
+            if (xAxis !== 'speed') fixedVars.push(`속력: ${currentSpeed} km/h`);
             if (xAxis !== 'slope') fixedVars.push(`경사도: ${currentSlope > 0 ? '+' : ''}${currentSlope}%`);
             if (xAxis !== 'rain') fixedVars.push(`강수량: ${currentRain} mm/h`);
             if (xAxis !== 'reaction') fixedVars.push(`반응시간: ${currentReaction.toFixed(1)}초`);
