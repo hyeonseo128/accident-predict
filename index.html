@@ -243,8 +243,9 @@
                 </div>
                 
                 <div class="control-group">
-                    <label>강수량 (mm/h) <span class="value-display" id="rainVal">0</span></label>
+                    <label>강수량 (mm/h) <span class="value-display" id="rainVal">0</span> <span id="rainStatus" style="font-size: 0.85em; color: #666;"></span></label>
                     <input type="range" id="rain" min="0" max="50" value="0" step="5">
+                    <div style="font-size: 0.8em; color: #888; margin-top: 5px;">기상청 발표 시간당 강수량</div>
                 </div>
                 
                 <div class="control-group">
@@ -289,21 +290,32 @@
                 </div>
                 
                 <div class="chart-container">
+                    <div style="margin-bottom: 15px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                        <div>
+                            <label style="font-size: 0.9em; font-weight: 600; margin-right: 8px;">X축:</label>
+                            <select id="xAxis" style="padding: 6px 12px; border-radius: 6px; border: 2px solid #667eea; font-size: 0.9em;">
+                                <option value="speed">속도 (km/h)</option>
+                                <option value="slope">경사도 (%)</option>
+                                <option value="rain">강수량 (mm/h)</option>
+                                <option value="reaction">반응시간 (초)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.9em; font-weight: 600; margin-right: 8px;">Y축:</label>
+                            <select id="yAxis" style="padding: 6px 12px; border-radius: 6px; border: 2px solid #667eea; font-size: 0.9em;">
+                                <option value="total">총 정지거리 (m)</option>
+                                <option value="brake">제동거리 (m)</option>
+                                <option value="reaction">공주거리 (m)</option>
+                            </select>
+                        </div>
+                    </div>
                     <canvas id="statsChart"></canvas>
                 </div>
                 
                 <div class="legend">
                     <div class="legend-item">
-                        <div class="legend-color" style="background: #ff6b6b;"></div>
-                        <span>내리막 (-10%)</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color" style="background: #4ecdc4;"></div>
-                        <span>평지 (0%)</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color" style="background: #95e1d3;"></div>
-                        <span>오르막 (+10%)</span>
+                        <div class="legend-color" style="background: #667eea;"></div>
+                        <span id="legendText">현재 조건에서의 분석</span>
                     </div>
                 </div>
             </div>
@@ -475,54 +487,94 @@
         
         let chart = null;
         
-        function updateChart(currentSpeed, currentRain) {
-            const speeds = [];
-            for (let s = 20; s <= 120; s += 10) {
-                speeds.push(s);
+        function generateDataPoints(xVar, currentSpeed, currentSlope, currentRain, currentReaction) {
+            const points = [];
+            let xValues = [];
+            let xLabel = '';
+            
+            // X축 범위 설정
+            switch(xVar) {
+                case 'speed':
+                    xValues = Array.from({length: 11}, (_, i) => 20 + i * 10); // 20~120
+                    xLabel = '속도 (km/h)';
+                    break;
+                case 'slope':
+                    xValues = Array.from({length: 13}, (_, i) => -15 + i * 2.5); // -15~15
+                    xLabel = '경사도 (%)';
+                    break;
+                case 'rain':
+                    xValues = Array.from({length: 11}, (_, i) => i * 5); // 0~50
+                    xLabel = '강수량 (mm/h)';
+                    break;
+                case 'reaction':
+                    xValues = Array.from({length: 11}, (_, i) => 0.5 + i * 0.25); // 0.5~3.0
+                    xLabel = '반응시간 (초)';
+                    break;
             }
             
-            const data = {
-                downhill: [],
-                flat: [],
-                uphill: []
-            };
-            
-            speeds.forEach(s => {
-                const down = calculateDistances(s, -10, currentRain, 1.0);
-                const flat = calculateDistances(s, 0, currentRain, 1.0);
-                const up = calculateDistances(s, 10, currentRain, 1.0);
+            // 각 X값에 대해 Y값 계산
+            xValues.forEach(x => {
+                let speed = currentSpeed;
+                let slope = currentSlope;
+                let rain = currentRain;
+                let reaction = currentReaction;
                 
-                data.downhill.push(down.total);
-                data.flat.push(flat.total);
-                data.uphill.push(up.total);
+                // X축 변수 적용
+                switch(xVar) {
+                    case 'speed': speed = x; break;
+                    case 'slope': slope = x; break;
+                    case 'rain': rain = x; break;
+                    case 'reaction': reaction = x; break;
+                }
+                
+                const dist = calculateDistances(speed, slope, rain, reaction);
+                points.push({x, dist});
             });
             
+            return {points, xLabel};
+        }
+        
+        function updateChart(currentSpeed, currentSlope, currentRain, currentReaction) {
+            const xAxis = document.getElementById('xAxis').value;
+            const yAxis = document.getElementById('yAxis').value;
+            
+            const {points, xLabel} = generateDataPoints(xAxis, currentSpeed, currentSlope, currentRain, currentReaction);
+            
+            // Y축 데이터 선택
+            let yData = [];
+            let yLabel = '';
+            
+            switch(yAxis) {
+                case 'total':
+                    yData = points.map(p => p.dist.total);
+                    yLabel = '총 정지거리 (m)';
+                    break;
+                case 'brake':
+                    yData = points.map(p => p.dist.brake);
+                    yLabel = '제동거리 (m)';
+                    break;
+                case 'reaction':
+                    yData = points.map(p => p.dist.reaction);
+                    yLabel = '공주거리 (m)';
+                    break;
+            }
+            
             const chartData = {
-                labels: speeds,
+                labels: points.map(p => p.x.toFixed(1)),
                 datasets: [
                     {
-                        label: '내리막 (-10%)',
-                        data: data.downhill,
-                        borderColor: '#ff6b6b',
-                        backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                        label: yLabel,
+                        data: yData,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
                         borderWidth: 3,
-                        tension: 0.4
-                    },
-                    {
-                        label: '평지 (0%)',
-                        data: data.flat,
-                        borderColor: '#4ecdc4',
-                        backgroundColor: 'rgba(78, 205, 196, 0.1)',
-                        borderWidth: 3,
-                        tension: 0.4
-                    },
-                    {
-                        label: '오르막 (+10%)',
-                        data: data.uphill,
-                        borderColor: '#95e1d3',
-                        backgroundColor: 'rgba(149, 225, 211, 0.1)',
-                        borderWidth: 3,
-                        tension: 0.4
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: '#667eea',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
                     }
                 ]
             };
@@ -530,6 +582,14 @@
             if (chart) {
                 chart.destroy();
             }
+            
+            // 범례 텍스트 업데이트
+            const fixedVars = [];
+            if (xAxis !== 'speed') fixedVars.push(`속도 ${currentSpeed}km/h`);
+            if (xAxis !== 'slope') fixedVars.push(`경사 ${currentSlope > 0 ? '+' : ''}${currentSlope}%`);
+            if (xAxis !== 'rain') fixedVars.push(`강수량 ${currentRain}mm/h`);
+            if (xAxis !== 'reaction') fixedVars.push(`반응 ${currentReaction.toFixed(1)}초`);
+            document.getElementById('legendText').textContent = fixedVars.join(', ');
             
             chart = new Chart(document.getElementById('statsChart'), {
                 type: 'line',
@@ -540,7 +600,7 @@
                     plugins: {
                         title: {
                             display: true,
-                            text: '경사도별 정지거리 비교 분석',
+                            text: `${yLabel} vs ${xLabel}`,
                             font: { size: 16, weight: 'bold' }
                         },
                         legend: {
@@ -551,14 +611,14 @@
                         x: {
                             title: {
                                 display: true,
-                                text: '속도 (km/h)',
+                                text: xLabel,
                                 font: { size: 13, weight: 'bold' }
                             }
                         },
                         y: {
                             title: {
                                 display: true,
-                                text: '총 정지거리 (m)',
+                                text: yLabel,
                                 font: { size: 13, weight: 'bold' }
                             },
                             beginAtZero: true
@@ -580,6 +640,14 @@
             displays.rain.textContent = rain;
             displays.reaction.textContent = reaction.toFixed(1);
             displays.obstacle.textContent = obstacle;
+            
+            // 강수량 상태 표시
+            const rainStatus = document.getElementById('rainStatus');
+            if (rain === 0) rainStatus.textContent = '(건조)';
+            else if (rain <= 3) rainStatus.textContent = '(약한 비)';
+            else if (rain <= 15) rainStatus.textContent = '(보통 비)';
+            else if (rain <= 30) rainStatus.textContent = '(강한 비)';
+            else rainStatus.textContent = '(폭우)';
             
             const distances = calculateDistances(speed, slope, rain, reaction);
             
@@ -610,12 +678,16 @@
             }
             
             drawSimulation(speed, slope, obstacle, distances);
-            updateChart(speed, rain);
+            updateChart(speed, slope, rain, reaction);
         }
         
         Object.values(controls).forEach(control => {
             control.addEventListener('input', updateSimulation);
         });
+        
+        // 그래프 축 변경 이벤트
+        document.getElementById('xAxis').addEventListener('change', updateSimulation);
+        document.getElementById('yAxis').addEventListener('change', updateSimulation);
         
         updateSimulation();
     </script>
