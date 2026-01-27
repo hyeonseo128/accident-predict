@@ -185,7 +185,7 @@
             padding: 20px;
             border-radius: 12px;
             border: 2px solid #e0e0e0;
-            height: 400px;
+            height: 450px;
         }
         
         .legend {
@@ -310,6 +310,10 @@
                         </div>
                     </div>
                     <canvas id="statsChart"></canvas>
+                    <div id="controlledVars" style="margin-top: 15px; padding: 12px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                        <div style="font-size: 0.85em; color: #666; margin-bottom: 5px; font-weight: 600;">📌 통제변인 (고정된 조건)</div>
+                        <div id="controlledVarsText" style="font-size: 0.9em; color: #2c3e50;"></div>
+                    </div>
                 </div>
                 
                 <div class="legend">
@@ -587,11 +591,14 @@
             
             // 범례 텍스트 업데이트
             const fixedVars = [];
-            if (xAxis !== 'speed') fixedVars.push(`속도 ${currentSpeed}km/h`);
-            if (xAxis !== 'slope') fixedVars.push(`경사 ${currentSlope > 0 ? '+' : ''}${currentSlope}%`);
-            if (xAxis !== 'rain') fixedVars.push(`강수량 ${currentRain}mm/h`);
-            if (xAxis !== 'reaction') fixedVars.push(`반응 ${currentReaction.toFixed(1)}초`);
+            if (xAxis !== 'speed') fixedVars.push(`속도: ${currentSpeed} km/h`);
+            if (xAxis !== 'slope') fixedVars.push(`경사도: ${currentSlope > 0 ? '+' : ''}${currentSlope}%`);
+            if (xAxis !== 'rain') fixedVars.push(`강수량: ${currentRain} mm/h`);
+            if (xAxis !== 'reaction') fixedVars.push(`반응시간: ${currentReaction.toFixed(1)}초`);
             document.getElementById('legendText').textContent = fixedVars.join(', ');
+            
+            // 통제변인 텍스트 업데이트
+            document.getElementById('controlledVarsText').textContent = fixedVars.join(' | ');
             
             chart = new Chart(document.getElementById('statsChart'), {
                 type: 'line',
