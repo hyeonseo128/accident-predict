@@ -297,7 +297,7 @@
                         <span class="distance-value" id="brakeDist">28.3 m</span>
                     </div>
                     <div class="distance-row">
-                        <span class="distance-label">총 정지거리</span>
+                        <span class="distance-label">총 제동거리</span>
                         <span class="distance-value" id="totalDist">45.0 m</span>
                     </div>
                     <div class="distance-row" style="background: #fff3cd; margin-top: 10px; padding: 10px; border-radius: 6px;">
@@ -326,7 +326,7 @@
                         <div>
                             <label style="font-size: 0.9em; font-weight: 600; margin-right: 8px;">Y축:</label>
                             <select id="yAxis" style="padding: 6px 12px; border-radius: 6px; border: 2px solid #667eea; font-size: 0.9em;">
-                                <option value="total">총 정지거리 (m)</option>
+                                <option value="total">총 제동거리 (m)</option>
                                 <option value="brake">제동거리 (m)</option>
                                 <option value="reaction">공주거리 (m)</option>
                             </select>
@@ -404,7 +404,7 @@
             const denominator = 2 * g * (mu * Math.cos(thetaRad) + Math.sin(thetaRad));
             const brakeDist = denominator !== 0 ? (vMs * vMs) / denominator : 0;
             
-            // 적정 안전거리 = 총 정지거리 × 1.2 (20% 안전 마진)
+            // 적정 안전거리 = 총 제동거리 × 1.2 (20% 안전 마진)
             const totalDist = reactionDist + Math.max(0, brakeDist);
             const safeDist = totalDist * 1.2;
             
@@ -661,7 +661,7 @@
             switch(yAxis) {
                 case 'total':
                     yData = points.map(p => p.dist.total);
-                    yLabel = '총 정지거리 (m)';
+                    yLabel = '총 제동거리 (m)';
                     break;
                 case 'brake':
                     yData = points.map(p => p.dist.brake);
@@ -717,7 +717,7 @@
                     plugins: {
                         title: {
                             display: true,
-                            text: `${yLabel} vs ${xLabel}`,
+                            text: `${yLabel}와(과) ${xLabel}의 관계`,
                             font: { size: 16, weight: 'bold' }
                         },
                         legend: {
